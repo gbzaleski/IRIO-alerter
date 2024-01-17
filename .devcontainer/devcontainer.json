@@ -1,0 +1,57 @@
+{
+    "name": "IRIO",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/workspace",
+  
+    // Set *default* container specific settings.json values on container create.
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "terminal.integrated.profiles.linux": {
+            "bash": {
+              "path": "bash",
+              "icon": "terminal-bash"
+            },
+            "zsh": {
+              "path": "zsh"
+            },
+            "fish": {
+              "path": "fish"
+            },
+            "tmux": {
+              "path": "tmux",
+              "icon": "terminal-tmux"
+            },
+            "pwsh": {
+              "path": "pwsh",
+              "icon": "terminal-powershell"
+            }
+          }
+        }
+      },
+      // Add the IDs of extensions you want installed when the container is created.
+      "extensions": [
+        "ms-python.python",
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "redhat.vscode-yaml",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.vscode-pylance",
+        "ms-python.pylint",
+        "tamasfe.even-better-toml"
+      ]
+    },
+  
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [5000, 5432],
+    // "forwardPorts": [1433, 8000, 3000],
+  
+    // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+    "remoteUser": "vscode"
+    // Use 'postCreateCommand' to run commands after the container is created.
+    // "postCreateCommand": "pip3 --disable-pip-version-check --no-cache-dir install -r /workspace/requirements-dev.txt",
+    // "postCreateCommand": "sudo chown vscode frontend/node_modules"
+  }

@@ -10,17 +10,23 @@ services:
     expose:
       - 8000
     environment:
-      - SPANNER_EMULATOR_HOST=spanner:9010
+      SPANNER_EMULATOR_HOST: "spanner:9010"
   spanner:
     image: gcr.io/cloud-spanner-emulator/emulator
     ports:
       - "9010:9010"
       - "9020:9020"
-  gcloud-cli:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+
+    volumes:
+      - .:/workspace
+      - vscode-extensions:/home/vscode/.vscode-server/extensions
+    env_file:
+      - .env
+    # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
-    environment:
-      PROJECT_ID: "test-project"
-      SPANNER_EMULATOR_URL: "http://spanner:9020/"
-      INSTANCE_NAME: "test-instance"
-      DATABASE_NAME: "test-database"
+volumes:
+  vscode-extensions:
