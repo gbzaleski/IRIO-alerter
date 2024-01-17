@@ -9,3 +9,18 @@ services:
       - "8000:8000"
     expose:
       - 8000
+    environment:
+      - SPANNER_EMULATOR_HOST=spanner:9010
+  spanner:
+    image: gcr.io/cloud-spanner-emulator/emulator
+    ports:
+      - "9010:9010"
+      - "9020:9020"
+  gcloud-cli:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
+    command: sleep infinity
+    environment:
+      PROJECT_ID: "test-project"
+      SPANNER_EMULATOR_URL: "http://spanner:9020/"
+      INSTANCE_NAME: "test-instance"
+      DATABASE_NAME: "test-database"
