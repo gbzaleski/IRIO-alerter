@@ -5,3 +5,10 @@ CREATE TABLE MonitoredServices (
     AlertingWindow INT64 NOT NULL,
     AllowedResponseTime INT64 NOT NULL
 ) PRIMARY KEY (ServiceId)
+
+CREATE TABLE Alerts (
+    AlertId STRING(36) DEFAULT (GENERATE_UUID()),
+    MonitorId INT64 NOT NULL,
+    detectionTimestamp TIMESTAMP NOT NULL
+
+) PRIMARY KEY (AlertId)
