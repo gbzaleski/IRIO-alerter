@@ -15,10 +15,8 @@ services:
     build:
       context: monitor_service/
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    expose:
-      - 8000
+    # ports:
+    #   - "8000:8000"
     environment:
       SPANNER_EMULATOR_HOST: "spanner:9010"
   spanner:

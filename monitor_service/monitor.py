@@ -4,13 +4,12 @@ from pydantic import BaseModel
 import httpx
 from httpx import TimeoutException
 from .alerter import Alerter
+from .types import ServiceId, Miliseconds
 from .utils import get_time, time_difference_in_ms
-
-Miliseconds = int
 
 
 class MonitoredServiceInfo(BaseModel):
-    serviceId: int
+    serviceId: ServiceId
     url: str
     frequency: Miliseconds
     alertingWindow: Miliseconds
@@ -64,9 +63,9 @@ class ServiceMonitor:
             self.last_response_time, current_time
         )
         return time_since_last_response > self.info.alertingWindow
-    
+
     async def _send_alert(self):
-        await self.alerter.send_alert() #TODO: logic & should work immediately?
+        await self.alerter.send_alert()  # TODO: logic & should work immediately?
 
 
 async def f():
