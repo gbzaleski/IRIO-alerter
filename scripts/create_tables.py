@@ -34,9 +34,9 @@ def create_tables():
     instance = spanner_client.instance(INSTANCE_NAME)
 
     with open(os.path.join(MIGRATIONS_DIR, "ddl/schema.sql"), "r") as f:
-        ddl_statement = f.read()
+        ddl_statements = f.read().split(";")
 
-    db = instance.database(DATABASE_NAME, ddl_statements=[ddl_statement])
+    db = instance.database(DATABASE_NAME, ddl_statements=ddl_statements)
 
     operation = db.create()
 

@@ -4,25 +4,27 @@ CREATE TABLE MonitoredServices (
     Frequency INT64 NOT NULL,
     AlertingWindow INT64 NOT NULL,
     AllowedResponseTime INT64 NOT NULL
-) PRIMARY KEY (ServiceId)
+) PRIMARY KEY (ServiceId);
 
 CREATE TABLE MonitoredServicesLease (
     ServiceId STRING(36),
     MonitorId STRING(36),
-    leasedAt TIMESTAMP NOT NULL,
-    leaseDurationMs INT64 NOT NULL
-) PRIMARY KEY (ServiceId, MonitorId)
+    LeasedAt TIMESTAMP NOT NULL,
+    LeaseDurationMs INT64 NOT NULL
+) PRIMARY KEY (ServiceId, MonitorId);
 
 CREATE TABLE Detections (
     ServiceId STRING(36),
-    lastDetectionTime TIMESTAMP
-) PRIMARY KEY (ServiceId)
+    LastDetectionTime TIMESTAMP
+) PRIMARY KEY (ServiceId);
 
 CREATE TABLE Alerts (
     AlertId STRING(36) DEFAULT (GENERATE_UUID()),
     ServiceId STRING(36),
     MonitorId STRING(36),
-    detectionTimestamp TIMESTAMP NOT NULL
+    DetectionTimestamp TIMESTAMP NOT NULL,
+    AlertStatus INT64 NOT NULL
 
-) PRIMARY KEY (ServiceId, AlertId),
-INTERLEAVE IN PARENT MonitoredServices ON DELETE CASCADE
+) PRIMARY KEY (ServiceId, DetectionTimestamp DESC);
+
+CREATE NULL_FILTERED INDEX AlertsById ON Alerts(AlertId)
