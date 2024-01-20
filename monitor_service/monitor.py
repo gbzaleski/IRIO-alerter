@@ -1,36 +1,35 @@
-import asyncio
 from typing import Optional
-from pydantic import BaseModel
+import asyncio
 import httpx
 from httpx import TimeoutException
+from pydantic import BaseModel
+
+from monitor_service.types import MonitorId, MonitoredServiceInfo
 from .alerter import Alerter
-from .types import ServiceId, Miliseconds
 from .utils import get_time, time_difference_in_ms
 
 
-class MonitoredServiceInfo(BaseModel):
-    serviceId: ServiceId
-    url: str
-    frequency: Miliseconds
-    alertingWindow: Miliseconds
-    allowedResponseTime: Miliseconds
-
-
-async def monitor_service(service_info: MonitoredServiceInfo):
-    entry = ServiceMonitor(service_info, alerter=Alerter())
-
-    await entry.monitor()
+class ServiceMonitorConfiguration(BaseModel):
+    monitor_id: MonitorId
 
 
 class ServiceMonitor:
+    config: ServiceMonitorConfiguration
     info: MonitoredServiceInfo
-    alerter: Alerter
+    _alerter: Alerter
     last_response_time: Optional[float]
 
-    def __init__(self, info: MonitoredServiceInfo, *, alerter: Alerter):
+    def __init__(
+        self,
+        config: ServiceMonitorConfiguration,
+        info: MonitoredServiceInfo,
+        *,
+        alerter: Alerter
+    ):
+        self.config = config
         self.info = info
-        self.alerter = alerter
         self.last_response_time = None
+        self._alerter = alerter
 
     async def monitor(self):
         self.last_response_time = get_time()  # fake first response time
@@ -65,24 +64,4 @@ class ServiceMonitor:
         return time_since_last_response > self.info.alertingWindow
 
     async def _send_alert(self):
-        await self.alerter.send_alert()  # TODO: logic & should work immediately?
-
-
-async def f():
-    await asyncio.sleep(100)
-    print("f")
-
-
-async def test():
-    for x in range(100):
-        await asyncio.gather(asyncio.sleep(5), f())
-        print(x)
-
-
-def main():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(test())
-
-
-if __name__ == "__main__":
-    main()
+        await self._alerter.send_alert()

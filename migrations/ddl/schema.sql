@@ -9,7 +9,7 @@ CREATE TABLE MonitoredServices (
 CREATE TABLE MonitoredServicesLease (
     ServiceId STRING(36),
     MonitorId STRING(36),
-    LeasedAt TIMESTAMP NOT NULL,
+    LeasedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
     LeaseDurationMs INT64 NOT NULL
 ) PRIMARY KEY (ServiceId, MonitorId);
 

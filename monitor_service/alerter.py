@@ -1,3 +1,4 @@
+import abc
 from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel
@@ -16,6 +17,8 @@ class AlertStatus(Enum):
 
 ALERT_COOLDOWN: Miliseconds = 20000
 
-class Alerter:
+class Alerter(abc.ABC):
+
+    @abc.abstractmethod
     async def send_alert(self, alert: Alert):
         pass
