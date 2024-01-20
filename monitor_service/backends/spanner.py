@@ -17,14 +17,6 @@ from ..alerter import Alert, AlertStatus, Alerter, ALERT_COOLDOWN
 from ..poller import WorkPoller, WorkPollerConfiguration
 
 
-LAST_SUBMITTED_ALERT_SQL = """
-SELECT DetectionTimestamp, AlertStatus FROM Alerts
-WHERE ServiceId = @ServiceId
-ORDER BY DetectionTimestamp DESC
-LIMIT 1
-"""
-
-
 class AlerterSpanner(Alerter):
     _database: Database
 
@@ -47,6 +39,14 @@ def _get_timestamp(database: Database):
     with database.snapshot() as snapshot:
         results = snapshot.execute_sql("SELECT CURRENT_TIMESTAMP() AS now")
         return results.one()[0]
+
+
+LAST_SUBMITTED_ALERT_SQL = """
+SELECT DetectionTimestamp, AlertStatus FROM Alerts
+WHERE ServiceId = @ServiceId
+ORDER BY DetectionTimestamp DESC
+LIMIT 1
+"""
 
 
 def _send_alert(database: Database, alert: Alert):
@@ -125,6 +125,18 @@ class WorkPollerSpanner(WorkPoller):
         )
 
 
+GET_NEW_SERVICES_SQL = """
+SELECT ServiceId, COUNT(MonitorId) AS Replication
+FROM MonitoredServices LEFT OUTER JOIN MonitoredServicesLease
+ON MonitoredServices.ServiceId = MonitoredServicesLease.ServiceId
+WHERE LeasedTo > CURRENT_TIMESTAMP()
+GROUP BY ServiceId
+HAVING COUNTIF(MonitorId=@MonitorId) = 0 AND Replication < @MonitorReplicationFactor
+ORDER BY Replication
+LIMIT @Limit
+"""
+
+
 def _poll_for_work(
     database: Database,
     new_services_limit: int,
@@ -145,14 +157,14 @@ def _poll_for_work(
             },
             param_types={
                 "ServiceId": param_types.STRING,
-                "MonitorId": param_types.STRING
+                "MonitorId": param_types.STRING,
             },
         )
         if already_exists.one_or_none() is not None:
             return [s]
 
         transaction.execute_update(
-            "INSERT INTO MonitoredServicesLease (ServiceId, MonitorId, LeasedAt, LeaseDurationMs) VALUES (@ServiceId, @MonitorId, PENDING_COMMIT_TIMESTAMP(), @LeaseDurationMs)",
+            "INSERT INTO MonitoredServicesLease (ServiceId, MonitorId, LeasedAt, LeaseDurationMs) VALUES (@ServiceId, @MonitorId, CURRENT_TIMESTAMP(), @LeaseDurationMs)",
             params={
                 "ServiceId": s,
                 "MonitorId": config.monitor_id,
@@ -171,7 +183,7 @@ def _poll_for_work(
 
 RENEW_LEASE_SQL = """
 UPDATE MonitoredServicesLease
-SET LeasedAt = PENDING_COMMIT_TIMESTAMP(),
+SET LeasedAt = CURRENT_TIMESTAMP(),
 LeaseDurationMs = @LeaseDurationMs
 WHERE MonitorId = @MonitorId AND ServiceId IN UNNEST(@ServicesIds) 
 """
