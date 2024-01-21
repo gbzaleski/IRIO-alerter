@@ -17,10 +17,16 @@ services:
     build:
       context: monitor_service/
       dockerfile: Dockerfile
-    # ports:
-    #   - "8000:8000"
     environment:
       SPANNER_EMULATOR_HOST: "spanner:9010"
+  alerter_service:
+    build:
+      context: alerter_service/
+      dockerfile: Dockerfile
+    environment:
+      SPANNER_EMULATOR_HOST: "spanner:9010"
+    env_file:
+      - .env
   spanner:
     image: gcr.io/cloud-spanner-emulator/emulator
     ports:
