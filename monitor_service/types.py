@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from .common.types import ServiceId, Miliseconds
 
 ServiceId = str
 MonitorId = str

@@ -12,7 +12,8 @@ from monitor_service.types import (
     MonitoredServiceInfo,
     ServiceId,
 )
-from ..alerter import Alert, AlertStatus, Alerter, ALERT_COOLDOWN
+from ..common.types import AlertStatus
+from ..alerter import Alert, Alerter, ALERT_COOLDOWN
 from ..poller import WorkPoller, WorkPollerConfiguration, MONITOR_REPLICATION_FACTOR
 
 
@@ -58,7 +59,7 @@ def _send_alert(database: Database, alert: Alert):
 
         if last_alert is not None:
             millis = (alert.timestamp - last_alert[0]) / timedelta(milliseconds=1)
-            if last_alert[1] != AlertStatus.SUBMITTED.value or millis < ALERT_COOLDOWN:
+            if millis < ALERT_COOLDOWN:
                 return  # TODO: log
 
         transaction.insert(
@@ -135,50 +136,6 @@ LIMIT @Limit
 """
 
 
-def _poll_for_work_stub(
-    database: Database,
-    new_services_limit: int,
-    already_monitored_services: list[ServiceId],
-    config: WorkPollerConfiguration,
-) -> list[ServiceId]:
-    s = "6839b274-f5ab-42f5-a3f8-ea10bbf2b599"
-    if s in already_monitored_services:
-        return []
-
-    # TODO: real implementation
-    def f(transaction: Transaction):
-        already_exists = transaction.execute_sql(
-            "SELECT ServiceId FROM MonitoredServicesLease WHERE MonitorId = @MonitorId AND ServiceId = @ServiceId",
-            params={
-                "ServiceId": s,
-                "MonitorId": config.monitor_id,
-            },
-            param_types={
-                "ServiceId": param_types.STRING,
-                "MonitorId": param_types.STRING,
-            },
-        )
-        if already_exists.one_or_none() is not None:
-            return [s]
-
-        transaction.execute_update(
-            "INSERT INTO MonitoredServicesLease (ServiceId, MonitorId, LeasedAt, LeaseDurationMs) VALUES (@ServiceId, @MonitorId, CURRENT_TIMESTAMP(), @LeaseDurationMs)",
-            params={
-                "ServiceId": s,
-                "MonitorId": config.monitor_id,
-                "LeaseDurationMs": config.lease_duration,
-            },
-            param_types={
-                "ServiceId": param_types.STRING,
-                "MonitorId": param_types.STRING,
-                "LeaseDurationMs": param_types.INT64,
-            },
-        )
-
-    database.run_in_transaction(f)
-    return [s]
-
-
 def _poll_for_work(
     database: Database,
     new_services_limit: int,
@@ -241,6 +198,7 @@ UPDATE MonitoredServicesLease
 SET LeasedAt = CURRENT_TIMESTAMP(),
 LeaseDurationMs = @LeaseDurationMs
 WHERE MonitorId = @MonitorId AND ServiceId IN UNNEST(@ServicesIds) 
+THEN RETURN (ServiceId)
 """
 
 
@@ -249,8 +207,10 @@ def _renew_lease(
 ):
     if len(services) == 0:
         return
+
     def f(transaction: Transaction):
-        transaction.execute_update(
+        transaction.begin()
+        res = transaction.execute_sql(
             RENEW_LEASE_SQL,
             params={
                 "LeaseDurationMs": config.lease_duration,
@@ -263,12 +223,15 @@ def _renew_lease(
                 "ServicesIds": param_types.Array(param_types.STRING),
             },
         )
+        return list(res)
+
     print("Trying to renew", services)
     try:
-        database.run_in_transaction(f)
+        r = database.run_in_transaction(f)
+        print("renewed", r)
     except:
         logging.exception("Exception while renewing lease")
-    print("Renewed", services) #TODO: log
+    print("Renewed", services)  # TODO: log
 
 
 GET_SERVICES_INFO_SQL = """
@@ -307,14 +270,3 @@ def get_spanner_database():
     instance = client.instance(INSTANCE_NAME)
     db = instance.database(DATABASE_NAME)
     return db
-
-
-def _get_alerts(database: Database):
-    with database.snapshot() as snapshot:
-        results = snapshot.execute_sql("SELECT * FROM Alerts")
-        return results.to_dict_list()
-
-
-async def get_alerts(database: Database):
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, partial(_get_alerts, database))

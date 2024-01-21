@@ -9,12 +9,6 @@ class Alert(BaseModel):
     monitorId: MonitorId
     timestamp: datetime
 
-class AlertStatus(Enum):
-    SUBMITTED = 0
-    NOTIFY1 = 1
-    NOTIFY2 = 2
-    ACK = 3
-
 ALERT_COOLDOWN: Miliseconds = 20000
 
 class Alerter(abc.ABC):
