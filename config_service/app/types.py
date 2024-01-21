@@ -1,10 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
+from .common.types import ServiceId, MonitorId, Miliseconds
 
-ServiceId = str
-MonitorId = str
-
-Miliseconds = int
 
 class MonitoredServiceInfo(BaseModel):
     serviceId: ServiceId
@@ -12,6 +9,7 @@ class MonitoredServiceInfo(BaseModel):
     frequency: Miliseconds
     alertingWindow: Miliseconds
     allowedResponseTime: Miliseconds
+
 
 class MonitoredServicesLease(BaseModel):
     serviceId: ServiceId

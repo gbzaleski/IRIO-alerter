@@ -3,6 +3,7 @@ from google.cloud.spanner_v1.transaction import Transaction
 
 from .spanner import get_spanner_database
 from .types import MonitoredServiceInfo, MonitorId, ServiceId, MonitoredServicesLease
+from .common.types import AlertStatus
 
 db = get_spanner_database()
 
@@ -19,7 +20,7 @@ def ack_service(serviceId: ServiceId):
             ACK_SERVICE_SQL,
             params = {
                 "ServiceId": serviceId,
-                "Ack": 3
+                "Ack": AlertStatus.ACK.value
             },
             param_types={
                 "ServiceId": param_types.STRING,
