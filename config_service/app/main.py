@@ -19,7 +19,6 @@ ServiceId = str
 @app.post("/service")
 def service_insert(service: MonitoredServiceInfo):
     return queries.insert_service(service)
-    
 
 @app.put("/service")
 def service_update(service: MonitoredServiceInfo): 
@@ -44,3 +43,7 @@ def monitored_by(monitor_id: MonitorId):
 @app.get('/monitors/', response_model=list[MonitorId])
 def active_monitors():
     return queries.active_monitors()
+
+@app.get('/ack/{serviceId}')
+def service_ack(serviceId: Annotated [ServiceId, Path(max_length=36)]):
+    return queries.ack_service(serviceId)

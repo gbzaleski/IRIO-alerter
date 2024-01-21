@@ -6,6 +6,30 @@ from .types import MonitoredServiceInfo, MonitorId, ServiceId, MonitoredServices
 
 db = get_spanner_database()
 
+ACK_SERVICE_SQL = """
+UPDATE Alerts
+SET AlertStatus = @Ack
+WHERE ServiceId = @ServiceId
+THEN RETURN ServiceId
+"""
+
+def ack_service(serviceId: ServiceId):
+    def f(transaction: Transaction, results):
+        for x in transaction.execute_sql(
+            ACK_SERVICE_SQL,
+            params = {
+                "ServiceId": serviceId,
+                "Ack": 3
+            },
+            param_types={
+                "ServiceId": param_types.STRING,
+                "Ack": param_types.INT64
+            }
+            ):
+            results.append(x)
+    results = []
+    db.run_in_transaction(f, results)
+    return {"result": results}
 
 def insert_service(service: MonitoredServiceInfo):
     def f(transaction: Transaction):
