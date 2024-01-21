@@ -30,6 +30,9 @@ class WorkManager:
         # polling_task = asyncio.create_task(self._poll_for_work())
         # self._background_tasks.add(polling_task)
         # polling_task.add_done_callback(self._background_tasks.discard)
+        lease_renew_task = asyncio.create_task(self._renew_lease())
+        self._background_tasks.add(lease_renew_task)
+        lease_renew_task.add_done_callback(self._background_tasks.discard)
         await self._poll_for_work()
 
     async def _poll_for_work(self):
@@ -49,6 +52,13 @@ class WorkManager:
                 # TODO:
             await asyncio.sleep(self.config.work_poll_interval)
 
+    async def _renew_lease(self):
+        lease_renew_interval = self._work_poller.config.lease_duration / 3000
+        while True:
+            print("Renewing lease")
+            await self._work_poller.renew_lease(list(self._monitored_services.keys()))
+            await asyncio.sleep(lease_renew_interval)
+
     async def _start_monitoring(self, service_id: ServiceId):
         print("Start monitoring", service_id)  # TODO: log
         info_l = await self._work_poller.get_services_info([service_id])
@@ -61,6 +71,7 @@ class WorkManager:
                 info=info,
                 alerter=self._alerter,
             )
+            self._monitored_services[service_id] = monitor
             monitoring_task = asyncio.create_task(monitor.monitor())
             self._background_tasks.add(monitoring_task)
             monitoring_task.add_done_callback(self._background_tasks.discard)

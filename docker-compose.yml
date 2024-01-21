@@ -11,6 +11,8 @@ services:
       - 8000
     environment:
       SPANNER_EMULATOR_HOST: "spanner:9010"
+    env_file:
+      - .env
   monitor_service:
     build:
       context: monitor_service/

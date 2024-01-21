@@ -7,6 +7,8 @@ class WorkPollerConfiguration(BaseModel):
     monitor_id: MonitorId
     lease_duration: Miliseconds
 
+MONITOR_REPLICATION_FACTOR = 3
+
 class WorkPoller(abc.ABC):
     def __init__(self, config: WorkPollerConfiguration):
         self.config = config

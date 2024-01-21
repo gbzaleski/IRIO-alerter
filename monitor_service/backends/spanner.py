@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+import logging
 import asyncio
 from functools import partial
 from google.cloud import spanner
@@ -8,13 +9,11 @@ from google.cloud.spanner_v1.transaction import Transaction
 from google.cloud.spanner_v1 import param_types
 
 from monitor_service.types import (
-    Miliseconds,
-    MonitorId,
     MonitoredServiceInfo,
     ServiceId,
 )
 from ..alerter import Alert, AlertStatus, Alerter, ALERT_COOLDOWN
-from ..poller import WorkPoller, WorkPollerConfiguration
+from ..poller import WorkPoller, WorkPollerConfiguration, MONITOR_REPLICATION_FACTOR
 
 
 class AlerterSpanner(Alerter):
@@ -126,10 +125,9 @@ class WorkPollerSpanner(WorkPoller):
 
 
 GET_NEW_SERVICES_SQL = """
-SELECT ServiceId, COUNT(MonitorId) AS Replication
+SELECT MonitoredServices.ServiceId, COUNTIF(LeasedTo > CURRENT_TIMESTAMP()) AS Replication
 FROM MonitoredServices LEFT OUTER JOIN MonitoredServicesLease
 ON MonitoredServices.ServiceId = MonitoredServicesLease.ServiceId
-WHERE LeasedTo > CURRENT_TIMESTAMP()
 GROUP BY ServiceId
 HAVING COUNTIF(MonitorId=@MonitorId) = 0 AND Replication < @MonitorReplicationFactor
 ORDER BY Replication
@@ -137,7 +135,7 @@ LIMIT @Limit
 """
 
 
-def _poll_for_work(
+def _poll_for_work_stub(
     database: Database,
     new_services_limit: int,
     already_monitored_services: list[ServiceId],
@@ -181,6 +179,63 @@ def _poll_for_work(
     return [s]
 
 
+def _poll_for_work(
+    database: Database,
+    new_services_limit: int,
+    already_monitored_services: list[ServiceId],
+    config: WorkPollerConfiguration,
+) -> list[ServiceId]:
+    s = set(already_monitored_services)
+
+    def f(transaction: Transaction):
+        new_services = [
+            x[0]
+            for x in transaction.execute_sql(
+                GET_NEW_SERVICES_SQL,
+                params={
+                    "MonitorId": config.monitor_id,
+                    "MonitorReplicationFactor": MONITOR_REPLICATION_FACTOR,
+                    "Limit": new_services_limit,
+                },
+                param_types={
+                    "MonitorId": param_types.STRING,
+                    "MonitorReplicationFactor": param_types.INT64,
+                    "Limit": param_types.INT64,
+                },
+            )
+        ]
+
+        if len(new_services) == 0:
+            return []
+
+        transaction.execute_update(
+            "DELETE FROM MonitoredServicesLease WHERE MonitorId = @MonitorId AND ServiceId IN UNNEST(@ServicesIds)",
+            params={"MonitorId": config.monitor_id, "ServicesIds": new_services},
+            param_types={
+                "MonitorId": param_types.STRING,
+                "ServicesIds": param_types.Array(param_types.STRING),
+            },
+        )
+
+        transaction.execute_update(
+            "INSERT INTO MonitoredServicesLease (ServiceId, MonitorId, LeasedAt, LeaseDurationMs) VALUES ((SELECT * FROM UNNEST(@ServicesIds)), @MonitorId, CURRENT_TIMESTAMP(), @LeaseDurationMs)",
+            params={
+                "MonitorId": config.monitor_id,
+                "ServicesIds": new_services,
+                "LeaseDurationMs": config.lease_duration,
+            },
+            param_types={
+                "MonitorId": param_types.STRING,
+                "ServicesIds": param_types.Array(param_types.STRING),
+                "LeaseDurationMs": param_types.INT64,
+            },
+        )
+        return new_services
+
+    res = database.run_in_transaction(f)
+    return [x for x in res if x not in s]
+
+
 RENEW_LEASE_SQL = """
 UPDATE MonitoredServicesLease
 SET LeasedAt = CURRENT_TIMESTAMP(),
@@ -192,8 +247,10 @@ WHERE MonitorId = @MonitorId AND ServiceId IN UNNEST(@ServicesIds)
 def _renew_lease(
     database: Database, services: list[ServiceId], config: WorkPollerConfiguration
 ):
+    if len(services) == 0:
+        return
     def f(transaction: Transaction):
-        transaction.execute_sql(
+        transaction.execute_update(
             RENEW_LEASE_SQL,
             params={
                 "LeaseDurationMs": config.lease_duration,
@@ -206,8 +263,12 @@ def _renew_lease(
                 "ServicesIds": param_types.Array(param_types.STRING),
             },
         )
-
-    database.run_in_transaction(f)
+    print("Trying to renew", services)
+    try:
+        database.run_in_transaction(f)
+    except:
+        logging.exception("Exception while renewing lease")
+    print("Renewed", services) #TODO: log
 
 
 GET_SERVICES_INFO_SQL = """
