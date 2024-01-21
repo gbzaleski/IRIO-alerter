@@ -3,7 +3,6 @@ from google.cloud import spanner
 
 SPANNER_DATABASE = None
 
-
 def get_spanner_database():
     global SPANNER_DATABASE
     if SPANNER_DATABASE is not None:
