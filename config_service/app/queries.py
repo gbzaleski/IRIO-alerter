@@ -1,16 +1,110 @@
 from google.cloud.spanner_v1 import param_types
+from google.cloud.spanner_v1.transaction import Transaction
 
 from .spanner import get_spanner_database
 from .types import MonitoredServiceInfo, MonitorId, ServiceId, MonitoredServicesLease
 
 db = get_spanner_database()
 
+
+def insert_service(service: MonitoredServiceInfo):
+    def f(transaction: Transaction):
+        transaction.insert(
+            "MonitoredServices",
+            columns=["Url", "Frequency", "AlertingWindow", "AllowedResponseTime"],
+            values=[
+                [
+                    service.url,
+                    service.frequency,
+                    service.alertingWindow,
+                    service.allowedResponseTime
+                ]
+            ],
+        )
+    db.run_in_transaction(f)
+    return {"result": "OK"}
+
+UPDATE_SERVICE_SQL = """
+UPDATE MonitoredServices
+SET Url = @Url,
+Frequency = @Frequency,
+AlertingWindow = @AlertingWindow,
+AllowedResponseTime = @AllowedResponseTime
+WHERE ServiceId = @ServiceId
+"""
+
+def update_service(service: MonitoredServiceInfo):
+    def f(transaction: Transaction):
+        transaction.execute_update(
+            UPDATE_SERVICE_SQL,
+            params={
+                "ServiceId": service.serviceId,
+                "Url": service.url,
+                "Frequency": service.frequency,
+                "AlertingWindow": service.alertingWindow,
+                "AllowedResponseTime": service.allowedResponseTime
+            },
+            param_types={
+                "ServiceId": param_types.STRING,
+                "Url": param_types.STRING,
+                "Frequency": param_types.INT64,
+                "AlertingWindow": param_types.INT64,
+                "AllowedResponseTime": param_types.INT64,
+            },
+        )
+    db.run_in_transaction(f)
+    return {"result": "OK"}
+
+
+DELETE_SERVICE_SQL = """
+DELETE FROM MonitoredServices
+WHERE ServiceId = @ServiceId
+"""
+def delete_service(serviceId: ServiceId):
+    def f(transaction: Transaction):
+        transaction.execute_update(
+            DELETE_SERVICE_SQL,
+            params={
+                "ServiceId": serviceId
+            },
+            param_types={
+                "ServiceId": param_types.STRING
+            },
+        )
+    db.run_in_transaction(f)
+    return {"result": "OK"}
+
+
+GET_SERVICE_SQL = """
+SELECT *
+FROM MonitoredServices
+WHERE ServiceId = @ServiceId
+"""
+def get_service(serviceId: ServiceId):
+    with db.snapshot() as snapshot:
+        results = snapshot.execute_sql(
+                GET_SERVICE_SQL, 
+                params = {
+                    "ServiceId": serviceId
+                },
+                param_types={
+                    "ServiceId": param_types.STRING
+                })
+    return [
+        MonitoredServiceInfo(
+            serviceId=x[0],
+            url=x[1],
+            frequency=x[2],
+            alertingWindow=x[3],
+            allowedResponseTime=x[4],
+        )
+        for x in results
+    ]
+
 GET_SERVICES_INFO_SQL = """
 SELECT ServiceId, Url, Frequency, AlertingWindow, AllowedResponseTime
 FROM MonitoredServices
 """
-
-
 def get_services_info():
     with db.snapshot() as snapshot:
         results = snapshot.execute_sql(GET_SERVICES_INFO_SQL)
