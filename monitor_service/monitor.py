@@ -1,11 +1,11 @@
 from typing import Optional
 import asyncio
 import httpx
-from httpx import TimeoutException
+from httpx import TimeoutException, RequestError
 from pydantic import BaseModel
 
 from monitor_service.types import MonitorId, MonitoredServiceInfo
-from .alerter import Alerter
+from .alerter import Alert, Alerter
 from .utils import get_time, time_difference_in_ms
 
 
@@ -34,7 +34,7 @@ class ServiceMonitor:
     async def monitor(self):
         self.last_response_time = get_time()  # fake first response time
 
-        sleep_time = self.info.frequency
+        sleep_time = self.info.frequency / 1000
 
         while True:
             await asyncio.gather(
@@ -47,11 +47,13 @@ class ServiceMonitor:
         Should finish in time < monitoring frequency #TODO: add metric
         """
         timeout = self.info.frequency / 2000  # TODO: set sensible timeout
+        url = str(self.info.url)
         async with httpx.AsyncClient() as client:
             try:
-                r = await client.get(self.info.url, timeout=timeout)
+                r = await client.get(url, timeout=timeout)
                 self.last_response_time = get_time()
-            except TimeoutException:
+            except RequestError:  # TODO:
+                print("Send alert?")
                 should_send = self._should_send_alert()
                 if should_send:
                     await self._send_alert()
@@ -64,4 +66,11 @@ class ServiceMonitor:
         return time_since_last_response > self.info.alertingWindow
 
     async def _send_alert(self):
-        await self._alerter.send_alert()
+        print("Send alert")
+        await self._alerter.send_alert(
+            Alert(
+                serviceId=self.info.serviceId,
+                monitorId=self.config.monitor_id,
+                timestamp=get_time(),  # TODO:
+            )
+        )

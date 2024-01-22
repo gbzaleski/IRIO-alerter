@@ -56,13 +56,10 @@ def _poll_alerts(
         r = list(
             transaction.execute_sql(
                 GET_ALERTS_SQL,
-                params={
-                    "Limit": limit,
-                    "CoveredShards": list(config.covered_shards)
-                },
+                params={"Limit": limit, "CoveredShards": list(config.covered_shards)},
                 param_types={
                     "Limit": param_types.INT64,
-                    "CoveredShards": param_types.Array(param_types.INT64)
+                    "CoveredShards": param_types.Array(param_types.INT64),
                 },
             )
         )
@@ -82,7 +79,7 @@ def _poll_alerts(
                 alertId=x[0],
                 serviceId=x[1],
                 detectionTimestamp=x[2],
-                status=AlertStatus[x[3]],
+                status=AlertStatus(x[3]),
             )
             for x in r
         ]

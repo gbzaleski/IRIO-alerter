@@ -174,8 +174,16 @@ def _poll_for_work(
             },
         )
 
+        values = ",".join(
+            [
+                f"('{s}', @MonitorId, CURRENT_TIMESTAMP(), @LeaseDurationMs)"
+                for s in new_services
+            ]
+        )
+
         transaction.execute_update(
-            "INSERT INTO MonitoredServicesLease (ServiceId, MonitorId, LeasedAt, LeaseDurationMs) VALUES ((SELECT * FROM UNNEST(@ServicesIds)), @MonitorId, CURRENT_TIMESTAMP(), @LeaseDurationMs)",
+            "INSERT INTO MonitoredServicesLease (ServiceId, MonitorId, LeasedAt, LeaseDurationMs) VALUES "
+            + values,
             params={
                 "MonitorId": config.monitor_id,
                 "ServicesIds": new_services,
