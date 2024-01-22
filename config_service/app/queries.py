@@ -1,5 +1,6 @@
 from google.cloud.spanner_v1 import param_types
 from google.cloud.spanner_v1.transaction import Transaction
+from datetime import datetime
 
 from .spanner import get_spanner_database
 from .types import MonitoredServiceInfo, MonitorId, ServiceId, MonitoredServicesLease
@@ -10,20 +11,26 @@ db = get_spanner_database()
 ACK_SERVICE_SQL = """
 UPDATE Alerts
 SET AlertStatus = @Ack
-WHERE ServiceId = @ServiceId
+WHERE ShardId = @ShardId 
+AND ServiceId = @ServiceId 
+AND DetectionTimestamp = @DetectionTimestamp
 THEN RETURN ServiceId
 """
 
-def ack_service(serviceId: ServiceId):
+def ack_service(shardId: int, serviceId: ServiceId, detectionTimestamp: datetime):
     def f(transaction: Transaction, results):
         for x in transaction.execute_sql(
             ACK_SERVICE_SQL,
             params = {
+                "ShardId": shardId,
                 "ServiceId": serviceId,
+                "DetectionTimestamp": detectionTimestamp,
                 "Ack": AlertStatus.ACK.value
             },
             param_types={
+                "ShardId": param_types.INT64,
                 "ServiceId": param_types.STRING,
+                "DetectionTimestamp": param_types.TIMESTAMP,
                 "Ack": param_types.INT64
             }
             ):
