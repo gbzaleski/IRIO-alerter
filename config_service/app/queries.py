@@ -11,24 +11,21 @@ db = get_spanner_database()
 ACK_SERVICE_SQL = """
 UPDATE Alerts
 SET AlertStatus = @Ack
-WHERE ShardId = @ShardId 
-AND ServiceId = @ServiceId 
+WHERE ServiceId = @ServiceId 
 AND DetectionTimestamp = @DetectionTimestamp
 THEN RETURN ServiceId
 """
 
-def ack_service(shardId: int, serviceId: ServiceId, detectionTimestamp: datetime):
+def ack_service(serviceId: ServiceId, detectionTimestamp: datetime):
     def f(transaction: Transaction, results):
         for x in transaction.execute_sql(
             ACK_SERVICE_SQL,
             params = {
-                "ShardId": shardId,
                 "ServiceId": serviceId,
                 "DetectionTimestamp": detectionTimestamp,
                 "Ack": AlertStatus.ACK.value
             },
             param_types={
-                "ShardId": param_types.INT64,
                 "ServiceId": param_types.STRING,
                 "DetectionTimestamp": param_types.TIMESTAMP,
                 "Ack": param_types.INT64

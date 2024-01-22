@@ -45,6 +45,6 @@ def monitored_by(monitor_id: MonitorId):
 def active_monitors():
     return queries.active_monitors()
 
-@app.get('/ack/{shardId}/{serviceId}/{detectionTimestamp}')
-def service_ack(shardId: int, serviceId: Annotated [ServiceId, Path(max_length=36)], detectionTimestamp: datetime):
-    return queries.ack_service(shardId, serviceId, detectionTimestamp)
+@app.get('/ack/{serviceId}/{detectionTimestamp}')
+def service_ack(serviceId: Annotated [ServiceId, Path(max_length=36)], detectionTimestamp: datetime):
+    return queries.ack_service(serviceId, detectionTimestamp)
