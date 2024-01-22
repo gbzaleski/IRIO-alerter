@@ -1,10 +1,27 @@
+CREATE TABLE Workspaces (
+    WorkspaceId STRING(36) NOT NULL DEFAULT (GENERATE_UUID())
+) PRIMARY KEY (WorkspaceId);
+
+CREATE TABLE Users (
+    UserId STRING(36) NOT NULL DEFAULT (GENERATE_UUID())
+) PRIMARY KEY (UserId);
+
 CREATE TABLE MonitoredServices (
     ServiceId STRING(36) NOT NULL DEFAULT (GENERATE_UUID()),
     Url STRING(1024) NOT NULL,
     Frequency INT64 NOT NULL,
     AlertingWindow INT64 NOT NULL,
-    AllowedResponseTime INT64 NOT NULL
+    AllowedResponseTime INT64 NOT NULL,
+    WorkspaceId STRING(36) NOT NULL
 ) PRIMARY KEY (ServiceId);
+
+CREATE NULL_FILTERED INDEX MonitoredServicesByWorkspaceId ON MonitoredServices(WorkspaceId, ServiceId);
+
+CREATE TABLE ContactMethods (
+    ServiceId STRING(36) NOT NULL,
+    MethodOrder INT64 NOT NULL,
+    Email STRING(128) NOT NULL,
+) PRIMARY KEY (ServiceId, MethodOrder), INTERLEAVE IN PARENT MonitoredServices ON DELETE CASCADE;
 
 CREATE TABLE MonitoredServicesLease (
     ServiceId STRING(36) NOT NULL,
