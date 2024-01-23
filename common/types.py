@@ -1,18 +1,18 @@
 from enum import Enum
+from pydantic import PositiveInt
 
 ServiceId = str
+AlertId = str
 AlerterId = str
 MonitorId = str
 
-Miliseconds = int
+Miliseconds = PositiveInt
 
 SHARDS_COUNT = 64
 
 
 class AlertStatus(Enum):
     SUBMITTED = 0
-    LEASED1 = 1
-    NOTIFY1 = 2
-    LEASED2 = 3
-    NOTIFY2 = 4
-    ACK = 5
+    NOTIFY1 = 1
+    NOTIFY2 = 2
+    ACK = 200
