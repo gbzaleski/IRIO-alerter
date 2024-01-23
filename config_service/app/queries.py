@@ -287,6 +287,7 @@ GET_SERVICE_ALERTS_SQL = """
 SELECT AlertId, ServiceId, DetectionTimestamp, AlertStatus
 FROM Alerts
 WHERE ServiceId = @ServiceId
+ORDER BY DetectionTimestamp DESC
 """
 
 
