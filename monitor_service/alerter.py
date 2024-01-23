@@ -1,17 +1,23 @@
 import abc
-from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel
+from pydantic import BaseModel
 from .types import ServiceId, MonitorId, Miliseconds
+
 
 class Alert(BaseModel):
     serviceId: ServiceId
     monitorId: MonitorId
     timestamp: datetime
 
-ALERT_COOLDOWN: Miliseconds = 20000
+
+class AlerterConfiguration(BaseModel):
+    alert_cooldown: Miliseconds
+
 
 class Alerter(abc.ABC):
+    def __init__(self, config: AlerterConfiguration):
+        self.config = config
 
     @abc.abstractmethod
     async def send_alert(self, alert: Alert):

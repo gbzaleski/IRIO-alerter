@@ -1,10 +1,5 @@
 from pydantic import BaseModel, HttpUrl
-from .common.types import ServiceId, Miliseconds
-
-ServiceId = str
-MonitorId = str
-
-Miliseconds = int
+from .common.types import ServiceId, MonitorId, Miliseconds
 
 
 class MonitoredServiceInfo(BaseModel):

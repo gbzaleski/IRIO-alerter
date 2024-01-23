@@ -1,13 +1,13 @@
 import abc
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 from .types import ServiceId, MonitorId, Miliseconds, MonitoredServiceInfo
 
 
 class WorkPollerConfiguration(BaseModel):
     monitor_id: MonitorId
     lease_duration: Miliseconds
+    monitor_replication_factor: PositiveInt
 
-MONITOR_REPLICATION_FACTOR = 3
 
 class WorkPoller(abc.ABC):
     def __init__(self, config: WorkPollerConfiguration):

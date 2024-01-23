@@ -13,21 +13,25 @@ from monitor_service.types import (
     ServiceId,
 )
 from ..common.types import AlertStatus
-from ..alerter import Alert, Alerter, ALERT_COOLDOWN
-from ..poller import WorkPoller, WorkPollerConfiguration, MONITOR_REPLICATION_FACTOR
+from ..alerter import Alert, Alerter, AlerterConfiguration
+from ..poller import WorkPoller, WorkPollerConfiguration
 
 
 class AlerterSpanner(Alerter):
     _database: Database
 
-    def __init__(self, *, database: Database):
+    def __init__(self, config: AlerterConfiguration, *, database: Database):
+        super().__init__(config)
         self._database = database
 
     async def send_alert(self, alert: Alert):
         alert.timestamp = await self._get_timestamp()
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
-            None, partial(_send_alert, alert=alert, database=self._database)
+            None,
+            partial(
+                _send_alert, alert=alert, database=self._database, config=self.config
+            ),
         )
 
     async def _get_timestamp(self):
@@ -49,7 +53,7 @@ LIMIT 1
 """
 
 
-def _send_alert(database: Database, alert: Alert):
+def _send_alert(database: Database, alert: Alert, config: AlerterConfiguration):
     def f(transaction: Transaction):
         last_alert = transaction.execute_sql(
             LAST_SUBMITTED_ALERT_SQL,
@@ -59,7 +63,7 @@ def _send_alert(database: Database, alert: Alert):
 
         if last_alert is not None:
             millis = (alert.timestamp - last_alert[0]) / timedelta(milliseconds=1)
-            if millis < ALERT_COOLDOWN:
+            if millis < config.alert_cooldown:
                 return  # TODO: log
 
         transaction.insert(
@@ -151,7 +155,7 @@ def _poll_for_work(
                 GET_NEW_SERVICES_SQL,
                 params={
                     "MonitorId": config.monitor_id,
-                    "MonitorReplicationFactor": MONITOR_REPLICATION_FACTOR,
+                    "MonitorReplicationFactor": config.monitor_replication_factor,
                     "Limit": new_services_limit,
                 },
                 param_types={
