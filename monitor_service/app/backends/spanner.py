@@ -8,7 +8,7 @@ from google.cloud.spanner_v1.database import Database
 from google.cloud.spanner_v1.transaction import Transaction
 from google.cloud.spanner_v1 import param_types
 
-from monitor_service.types import (
+from ..types import (
     MonitoredServiceInfo,
     ServiceId,
 )

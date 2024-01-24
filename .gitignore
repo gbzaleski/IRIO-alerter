@@ -1,5 +1,5 @@
 .venv/
 *.pyc
 alerter_service/app/common/
-monitor_service/common/
+monitor_service/app/common/
 config_service/app/common/

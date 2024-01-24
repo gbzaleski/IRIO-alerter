@@ -4,7 +4,7 @@ import httpx
 from httpx import TimeoutException, RequestError
 from pydantic import BaseModel
 
-from monitor_service.types import MonitorId, MonitoredServiceInfo
+from .types import MonitorId, MonitoredServiceInfo
 from .alerter import Alert, Alerter
 from .utils import get_time, time_difference_in_ms
 
