@@ -124,7 +124,7 @@ def update_service(service: MonitoredServiceInfo):
             UPDATE_SERVICE_SQL,
             params={
                 "ServiceId": service.serviceId,
-                "Url": service.url,
+                "Url": str(service.url),
                 "Frequency": service.frequency,
                 "AlertingWindow": service.alertingWindow,
                 "AllowedResponseTime": service.allowedResponseTime,
