@@ -24,7 +24,7 @@ def get_settings() -> Settings:
     if mode == "dev":
         settings = Settings(
             monitor_id=monitor_id,
-            run_server=True,
+            run_server=False,
             run_worker=True,
             poller_config=WorkPollerConfiguration(
                 monitor_id=monitor_id,
@@ -43,7 +43,7 @@ def get_settings() -> Settings:
     elif mode == "production":
         settings = Settings(
             monitor_id=monitor_id,
-            run_server=True,
+            run_server=False,
             run_worker=True,
             poller_config=WorkPollerConfiguration(
                 monitor_id=monitor_id,

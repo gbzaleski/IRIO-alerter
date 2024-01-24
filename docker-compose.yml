@@ -19,12 +19,14 @@ services:
       dockerfile: Dockerfile
     environment:
       SPANNER_EMULATOR_HOST: "spanner:9010"
+      INSTANCE_MODE: "dev"
   alerter_service:
     build:
       context: alerter_service/
       dockerfile: Dockerfile
     environment:
       SPANNER_EMULATOR_HOST: "spanner:9010"
+      INSTANCE_MODE: "dev"
     env_file:
       - .env
   spanner:

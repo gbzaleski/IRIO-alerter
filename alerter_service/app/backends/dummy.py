@@ -1,6 +1,5 @@
 import logging
-from alerter_service.app.types import Alert
-from ..types import ContactMethod
+from ..types import ContactMethod, Alert
 from ..sender import AlertSender
 
 

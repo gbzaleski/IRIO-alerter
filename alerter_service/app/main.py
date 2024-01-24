@@ -19,7 +19,7 @@ def get_settings() -> Settings:
     if mode == "dev":
         settings = Settings(
             alerter_id=alerter_id,
-            run_server=True,
+            run_server=False,
             run_worker=True,
             poller_config=AlertPollerConfiguration(
                 alerter_id=alerter_id,
@@ -34,7 +34,8 @@ def get_settings() -> Settings:
         )
     elif mode == "production":
         settings = Settings(
-            run_server=True,
+            alerter_id=alerter_id,
+            run_server=False,
             run_worker=True,
             use_real_sender=True,
             poller_config=AlertPollerConfiguration(
@@ -45,7 +46,7 @@ def get_settings() -> Settings:
             work_manager_config=WorkManagerConfiguration(
                 alerter_id=alerter_id,
                 alerts_batch_limit=100,
-                alerts_poll_interval=10,
+                alerts_poll_interval=10.0,
             ),
         )
     else:

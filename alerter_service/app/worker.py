@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from .backends.spanner import (
     get_spanner_database,
     AlertPollerSpanner,
@@ -11,11 +12,12 @@ from .sender import (
     AlertSenderConfiguration,
 )
 from .settings import Settings
-from .manager import WorkManager, WorkManagerConfiguration
-from .poller import AlertPollerConfiguration
+from .manager import WorkManager
 
 
 def main(settings: Settings):
+    logging.info("Starting alerter worker %s", settings.alerter_id)
+
     database = get_spanner_database()
     alerter_id = settings.alerter_id
     alert_poller = AlertPollerSpanner(
