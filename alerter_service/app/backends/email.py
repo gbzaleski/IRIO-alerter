@@ -2,10 +2,10 @@ from collections import namedtuple
 import os
 import logging
 import httpx
-from alerter_service.app.types import Alert
-from ..types import ContactMethod
-from ..sender import AlertSender
 from google.cloud import secretmanager
+
+from ..types import ContactMethod, Alert
+from ..sender import AlertSender
 
 
 def access_secret_version(secret_id):
