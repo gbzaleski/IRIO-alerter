@@ -1,4 +1,5 @@
 fastapi
 uvicorn[standard]
 google-cloud-spanner
+google-cloud-secret-manager
 httpx
