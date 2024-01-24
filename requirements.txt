@@ -1,3 +1,4 @@
 -r config_service/requirements.txt
 -r monitor_service/requirements.txt
 ipython
+rich

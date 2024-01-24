@@ -1,4 +1,7 @@
 fastapi
 uvicorn[standard]
 google-cloud-spanner
+google-cloud-logging
+structlog
+structlog-gcp
 httpx
