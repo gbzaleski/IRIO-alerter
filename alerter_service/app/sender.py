@@ -2,16 +2,7 @@ import abc
 from pydantic import BaseModel
 
 from .types import Alert, AlerterId, AlertId, ContactMethod
-from google.cloud import secretmanager
 
-def access_secret_version(secret_id):
-    client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(name=name)
-    return response.payload.data.decode('UTF-8')
-
-MAILJET_API_KEY = access_secret_version("MAILJET_API_KEY")
-MAILJET_SECRET_KEY = access_secret_version("MAILJET_SECRET_KEY")
 
 class AlertSenderConfiguration(BaseModel):
     alerter_id: AlerterId
@@ -22,7 +13,7 @@ class AlertSender(abc.ABC):
         self.config = config
 
     @abc.abstractmethod
-    async def send_alert(self, alert: Alert, contact_method: ContactMethod):
+    async def send_alert(self, alert: Alert, contact_method: ContactMethod) -> bool:
         pass
 
 
