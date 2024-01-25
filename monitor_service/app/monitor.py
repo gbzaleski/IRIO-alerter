@@ -3,10 +3,13 @@ import asyncio
 import httpx
 from httpx import TimeoutException, RequestError
 from pydantic import BaseModel
+import structlog
 
 from .types import MonitorId, MonitoredServiceInfo
 from .alerter import Alert, Alerter
 from .utils import get_time, time_difference_in_ms
+
+logger = structlog.stdlib.get_logger()
 
 
 class ServiceMonitorConfiguration(BaseModel):
@@ -24,7 +27,7 @@ class ServiceMonitor:
         config: ServiceMonitorConfiguration,
         info: MonitoredServiceInfo,
         *,
-        alerter: Alerter
+        alerter: Alerter,
     ):
         self.config = config
         self.info = info
@@ -52,8 +55,12 @@ class ServiceMonitor:
             try:
                 r = await client.get(url, timeout=timeout)
                 self.last_response_time = get_time()
-            except RequestError:  # TODO:
-                print("Send alert?")
+            except RequestError as e:
+                logger.info(
+                    f"Service {self.info.serviceId} did not respond correctly within allowed time",
+                    serviceId=self.info.serviceId,
+                    exception_type=type(e).__name__,
+                )
                 should_send = self._should_send_alert()
                 if should_send:
                     await self._send_alert()
@@ -66,10 +73,12 @@ class ServiceMonitor:
         return time_since_last_response > self.info.alertingWindow
 
     async def _send_alert(self):
-        print("Send alert")
+        serviceId = self.info.serviceId
+        logger.info("Sending alert", serviceId=serviceId)
+
         await self._alerter.send_alert(
             Alert(
-                serviceId=self.info.serviceId,
+                serviceId=serviceId,
                 monitorId=self.config.monitor_id,
                 timestamp=get_time(),  # TODO:
             )

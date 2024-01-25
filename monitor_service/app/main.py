@@ -2,15 +2,32 @@
 import os
 import sys
 import uuid
-import logging
 import multiprocessing
 import uvicorn
+import structlog
+import structlog_gcp
+from structlog_gcp import processors
+
 from .settings import (
     Settings,
     AlerterConfiguration,
     WorkPollerConfiguration,
     WorkManagerConfiguration,
 )
+
+
+def build_structlog_processors():
+    procs = []
+
+    procs.extend(processors.CoreCloudLogging().setup())
+    procs.extend(processors.LogSeverity().setup())
+    procs.extend(processors.CodeLocation().setup())
+    procs.extend(processors.FormatAsCloudLogging().setup())
+
+    return procs
+
+
+structlog.configure(processors=structlog_gcp.build_processors())
 
 
 def get_settings() -> Settings:

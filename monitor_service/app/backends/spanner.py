@@ -7,6 +7,7 @@ from google.cloud import spanner
 from google.cloud.spanner_v1.database import Database
 from google.cloud.spanner_v1.transaction import Transaction
 from google.cloud.spanner_v1 import param_types
+import structlog
 
 from ..types import (
     MonitoredServiceInfo,
@@ -15,6 +16,8 @@ from ..types import (
 from ..common.types import AlertStatus
 from ..alerter import Alert, Alerter, AlerterConfiguration
 from ..poller import WorkPoller, WorkPollerConfiguration
+
+logger = structlog.stdlib.get_logger()
 
 
 class AlerterSpanner(Alerter):
@@ -64,7 +67,11 @@ def _send_alert(database: Database, alert: Alert, config: AlerterConfiguration):
         if last_alert is not None:
             millis = (alert.timestamp - last_alert[0]) / timedelta(milliseconds=1)
             if millis < config.alert_cooldown:
-                return  # TODO: log
+                logger.debug(
+                    "Suppressing alert due to cooldown",
+                    serviceId=alert.serviceId,
+                    elapsed=millis,
+                )
 
         transaction.insert(
             "Alerts",
@@ -237,13 +244,10 @@ def _renew_lease(
         )
         return list(res)
 
-    print("Trying to renew", services)
     try:
         r = database.run_in_transaction(f)
-        print("renewed", r)
     except:
-        logging.exception("Exception while renewing lease")
-    print("Renewed", services)  # TODO: log
+        logger.exception("Error while renewing lease on monitored services")
 
 
 GET_SERVICES_INFO_SQL = """

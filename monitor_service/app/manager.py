@@ -1,9 +1,13 @@
 import asyncio
 from pydantic import BaseModel
+import structlog
+
 from .poller import WorkPoller
 from .alerter import Alerter
 from .monitor import ServiceMonitor, ServiceMonitorConfiguration
 from .types import ServiceId, MonitorId
+
+logger = structlog.stdlib.get_logger()
 
 
 class WorkManagerConfiguration(BaseModel):
@@ -36,9 +40,8 @@ class WorkManager:
         await self._poll_for_work()
 
     async def _poll_for_work(self):
-        # TODO:
         while True:
-            print("Polling for work")  # TODO: log
+            logger.info("Polling for work")
             new_services_limit = self.config.max_monitored_services - len(
                 self._monitored_services
             )
@@ -46,24 +49,22 @@ class WorkManager:
                 new_services = await self._work_poller.poll_for_work(
                     new_services_limit, self._monitored_services
                 )
-                print("New services", new_services)  # TODO: log
                 for service in new_services:
                     await self._start_monitoring(service)
-                # TODO:
             await asyncio.sleep(self.config.work_poll_interval)
 
     async def _renew_lease(self):
         lease_renew_interval = self._work_poller.config.lease_duration / 3000
         while True:
-            print("Renewing lease")
+            logger.info("Renewing lease on monitored services")
             await self._work_poller.renew_lease(list(self._monitored_services.keys()))
             await asyncio.sleep(lease_renew_interval)
 
-    async def _start_monitoring(self, service_id: ServiceId):
-        print("Start monitoring", service_id)  # TODO: log
-        info_l = await self._work_poller.get_services_info([service_id])
+    async def _start_monitoring(self, serviceId: ServiceId):
+        logger.info("Start monitoring of service", serviceId=serviceId)
+        info_l = await self._work_poller.get_services_info([serviceId])
         if len(info_l) == 0:
-            print("Error: empty service info")  # TODO: log
+            logger.error("Empty service info", serviceId=serviceId)
         else:
             info = info_l[0]
             monitor = ServiceMonitor(
@@ -71,7 +72,7 @@ class WorkManager:
                 info=info,
                 alerter=self._alerter,
             )
-            self._monitored_services[service_id] = monitor
+            self._monitored_services[serviceId] = monitor
             monitoring_task = asyncio.create_task(monitor.monitor())
             self._background_tasks.add(monitoring_task)
             monitoring_task.add_done_callback(self._background_tasks.discard)

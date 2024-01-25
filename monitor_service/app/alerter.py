@@ -1,7 +1,6 @@
 import abc
 from datetime import datetime
 from pydantic import BaseModel
-from pydantic import BaseModel
 from .types import ServiceId, MonitorId, Miliseconds
 
 

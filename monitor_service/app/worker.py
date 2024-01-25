@@ -1,12 +1,14 @@
 import asyncio
-import logging
+import structlog
 from .backends.spanner import get_spanner_database, AlerterSpanner, WorkPollerSpanner
 from .manager import WorkManager
 from .settings import Settings
 
+logger = structlog.stdlib.get_logger()
+
 
 def main(settings: Settings):
-    logging.info("Starting monitor worker %s", settings.monitor_id)
+    logger.info("Starting monitor worker", monitor_id=settings.monitor_id)
     database = get_spanner_database()
     work_poller = WorkPollerSpanner(
         config=settings.poller_config,
