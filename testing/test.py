@@ -18,15 +18,27 @@ def timeit(n):
         return timeit_wrapper
     return decorator
 
+N = 12
 
-@timeit(25)
-def call(url):
+@timeit(N)
+def call_time(url):
     response_API = requests.get(url)
-    # print(response_API.status_code)
-    # result = json.loads(response_API.text)
+
+def call_print(url):
+    print(url)
+    response_API = requests.get(url)
+    print(response_API.status_code)
+    result = json.loads(response_API.text)
+    pprint(result)
+
+def zip_call(url):
+    call_print(url)
+    call_time(url)
 
 if __name__ == "__main__":
     main_url = "http://104.154.246.19:8000/"
     url_service = f"{main_url}service/"
-    
-    call(url_service)
+    zip_call(url_service)
+
+    url_monitor = f"{main_url}monitors/"
+    zip_call(url_monitor)
