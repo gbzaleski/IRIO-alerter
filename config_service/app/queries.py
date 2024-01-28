@@ -13,6 +13,8 @@ from .types import (
     MonitoredServicesLease,
     MonitoredServiceInsertRequest,
     MonitoredServiceInsertResponse,
+    MonitoredServiceUpdateRequest,
+    ActiveMonitor,
 )
 from .common.types import AlertStatus
 
@@ -103,7 +105,11 @@ def insert_service(
                 "AllowedResponseTime": param_types.INT64,
             },
         ).one()
-        return MonitoredServiceInsertResponse(serviceId=r[0])
+        serviceId = r[0]
+        _replace_service_contact_methods(
+            transaction, serviceId, service.contact_methods
+        )
+        return MonitoredServiceInsertResponse(serviceId=serviceId)
 
     return db.run_in_transaction(f)
 
@@ -118,12 +124,12 @@ WHERE ServiceId = @ServiceId
 """
 
 
-def update_service(service: MonitoredServiceInfo):
+def update_service(serviceId: ServiceId, service: MonitoredServiceUpdateRequest):
     def f(transaction: Transaction):
         transaction.execute_update(
             UPDATE_SERVICE_SQL,
             params={
-                "ServiceId": service.serviceId,
+                "ServiceId": serviceId,
                 "Url": str(service.url),
                 "Frequency": service.frequency,
                 "AlertingWindow": service.alertingWindow,
@@ -137,6 +143,7 @@ def update_service(service: MonitoredServiceInfo):
                 "AllowedResponseTime": param_types.INT64,
             },
         )
+        _delete_service_leases(transaction, serviceId)
 
     db.run_in_transaction(f)
     return {"result": "OK"}
@@ -155,6 +162,7 @@ def delete_service(serviceId: ServiceId):
             params={"ServiceId": serviceId},
             param_types={"ServiceId": param_types.STRING},
         )
+        _delete_service_leases(transaction, serviceId)
 
     db.run_in_transaction(f)
     return {"result": "OK"}
@@ -215,8 +223,9 @@ WHERE MonitorId = @MonitorId AND LeasedTo > CURRENT_TIMESTAMP()
 """
 
 ACTIVE_MONITORS_SQL = """
-SELECT MonitorId FROM MonitoredServicesLease
+SELECT MonitorId, MAX(LeasedTo) FROM MonitoredServicesLease
 WHERE LeasedTo > CURRENT_TIMESTAMP()
+GROUP BY MonitorId
 """
 
 SERVICE_CONTACT_METHODS_SQL = """
@@ -241,23 +250,27 @@ def get_service_contact_methods(serviceId: ServiceId) -> list[ContactMethod]:
         return [ContactMethod(email=x[0]) for x in results]
 
 
+def _replace_service_contact_methods(
+    transaction: Transaction, serviceId: ServiceId, contact_methods: list[ContactMethod]
+):
+    begin_transaction(transaction)
+    transaction.execute_sql(
+        SERVICE_DELETE_CONTACT_METHODS_SQL,
+        params={"ServiceId": serviceId},
+        param_types={"ServiceId": param_types.STRING},
+    )
+
+    transaction.insert(
+        "ContactMethods",
+        ["ServiceId", "MethodOrder", "Email"],
+        [(serviceId, i, x.email) for i, x in enumerate(contact_methods)],
+    )
+
+
 def replace_service_contact_methods(
     serviceId: ServiceId, contact_methods: list[ContactMethod]
 ):
-    def f(transaction: Transaction):
-        transaction.execute_sql(
-            SERVICE_DELETE_CONTACT_METHODS_SQL,
-            params={"ServiceId": serviceId},
-            param_types={"ServiceId": param_types.STRING},
-        )
-
-        transaction.insert(
-            "ContactMethods",
-            ["ServiceId", "MethodOrder", "Email"],
-            [(serviceId, i, x.email) for i, x in enumerate(contact_methods)],
-        )
-
-    db.run_in_transaction(f)
+    db.run_in_transaction(_replace_service_contact_methods, serviceId, contact_methods)
 
 
 def get_monitored_by(monitor_id: MonitorId) -> list[MonitoredServicesLease]:
@@ -277,10 +290,13 @@ def get_monitored_by(monitor_id: MonitorId) -> list[MonitoredServicesLease]:
         ]
 
 
-def active_monitors() -> list[MonitorId]:
+def active_monitors() -> list[ActiveMonitor]:
     with db.snapshot() as snapshot:
         results = snapshot.execute_sql(ACTIVE_MONITORS_SQL)
-        return [x[0] for x in results]
+        return [
+            ActiveMonitor(monitorId=monitorId, leasedTo=leasedTo)
+            for monitorId, leasedTo in results
+        ]
 
 
 GET_SERVICE_ALERTS_SQL = """
@@ -308,3 +324,23 @@ def get_service_alerts(serviceId: ServiceId) -> list[Alert]:
             )
             for x in results
         ]
+
+
+def _delete_service_leases(transaction: Transaction, serviceId: ServiceId):
+    begin_transaction(transaction)
+    transaction.execute_update(
+        "DELETE FROM MonitoredServicesLease WHERE ServiceId = @ServiceId",
+        params={"ServiceId": serviceId},
+        param_types={"ServiceId": param_types.STRING},
+    )
+
+
+def delete_all_services():
+    def f(transaction: Transaction):
+        begin_transaction(transaction)
+        transaction.execute_update("DELETE FROM MonitoredServices WHERE 1=1")
+        transaction.execute_update("DELETE FROM ContactMethods WHERE 1=1")
+        transaction.execute_update("DELETE FROM MonitoredServicesLease WHERE 1=1")
+        transaction.execute_update("DELETE FROM Alerts WHERE 1=1")
+
+    print(db.run_in_transaction(f))

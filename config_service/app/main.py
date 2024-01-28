@@ -8,10 +8,13 @@ from .types import (
     ContactMethod,
     MonitoredServiceInsertRequest,
     MonitoredServiceInsertResponse,
+    ActiveMonitor,
+    MonitoredServiceUpdateRequest,
 )
 from . import queries
 
 from typing import Annotated
+from pydantic import ValidationError
 
 from fastapi import FastAPI, Query, Body, Path
 from fastapi.responses import HTMLResponse
@@ -26,9 +29,12 @@ def service_insert(service: MonitoredServiceInsertRequest):
     return queries.insert_service(service)
 
 
-@app.put("/service/")
-def service_update(service: MonitoredServiceInfo):
-    return queries.update_service(service)
+@app.put("/service/{serviceId}/")
+def service_update(
+    serviceId: Annotated[ServiceId, Path(max_length=36)],
+    service: MonitoredServiceUpdateRequest,
+):
+    return queries.update_service(serviceId, service)
 
 
 @app.delete("/service/{serviceId}/")
@@ -57,7 +63,7 @@ def service_change_contact_methods(
     contact_methods: list[ContactMethod],
 ):
     if len(contact_methods) != 2:
-        raise ValueError("Service needs to have exactly 2 contact methods")
+        raise ValidationError("Service needs to have exactly 2 contact methods")
 
     queries.replace_service_contact_methods(serviceId, contact_methods)
 
@@ -69,7 +75,7 @@ def monitored_by(monitor_id: Annotated[MonitorId, Path(max_length=36)]):
     return queries.get_monitored_by(monitor_id)
 
 
-@app.get("/monitors/", response_model=list[MonitorId])
+@app.get("/monitors/", response_model=list[ActiveMonitor])
 def active_monitors():
     return queries.active_monitors()
 
@@ -89,3 +95,8 @@ def service_ack(
     serviceId: Annotated[ServiceId, Path(max_length=36)], detectionTimestamp: datetime
 ):
     return queries.ack_service(serviceId, detectionTimestamp)
+
+
+@app.post("/tests/delete_all/")
+def tests_delete_all():
+    queries.delete_all_services()
