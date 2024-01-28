@@ -254,7 +254,7 @@ def _replace_service_contact_methods(
     transaction: Transaction, serviceId: ServiceId, contact_methods: list[ContactMethod]
 ):
     begin_transaction(transaction)
-    transaction.execute_sql(
+    transaction.execute_update(
         SERVICE_DELETE_CONTACT_METHODS_SQL,
         params={"ServiceId": serviceId},
         param_types={"ServiceId": param_types.STRING},
