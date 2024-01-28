@@ -19,7 +19,7 @@ def timeit(n):
         return timeit_wrapper
     return decorator
 
-N = 2 # TODO dac wieksza liczbe
+N = 100
 # Get time test
 @timeit(N)
 def call_time(url):
@@ -84,37 +84,47 @@ if __name__ == "__main__":
 
     # Mock alert data
     data = {
-        "url": "https://example-martinez-test.com/",
-        "frequency": 1,
-        "alertingWindow": 500,
-        "allowedResponseTime": 1000
+        "url": "https://martinez-alert.com/",
+        "frequency": 2_500,
+        "alertingWindow": 10_000,
+        "allowedResponseTime": 120_000,
+        "contact_methods": [
+            {
+            "email": "default1@example.com"
+            },
+            {
+            "email": "default2@example.com"
+            }
+        ]
     }
 
     # Insert service
     id = call_post(url_service, data)
-    data = {**data, **id, "frequency": 2}
+    data = {**data, **id, "frequency": 5000}
     service_id = id['serviceId']
+
     # Update service data
-    call_put_service(url_service, data)
+    url_givenservice = url_service + service_id + "/"
+    call_put_service(url_givenservice, data)
+
     # Query service list
     call_get(url_service)
-    # Time-test API for services
-    call_time(url_service)
 
-    url_givenservice = url_service + service_id + "/"
     # Get service data
     call_get(url_givenservice, True)
 
     contact_value = [
         {
             "email": "user@example.com"
+        },
+        {
+            "email": "adm1n@gmail.com"
         }
     ]
     url_contacts = url_givenservice + "contact_methods/"
 
     # Add contact data
-    # call_put_service(url_contacts, contact_value)
-    # Error 500 xD
+    call_put_service(url_contacts, contact_value)
 
     # Access contact data
     call_get(url_contacts, True)
@@ -127,16 +137,18 @@ if __name__ == "__main__":
     alert_url = main_url + "ack/" + service_id + "/" + str(int(time.time()))
     call_post(alert_url, {})
 
+    # Time-test API for monitors
+    call_time(url_monitor)
+
+    # Time-test API for services
+    call_time(url_service)
+
     # Get alert list
     url_alertlist = url_givenservice + "alerts/"
     call_get(url_alertlist, True)
-    # Czy tu nie powinenen sie pojawic ten alert wyzej? 
 
     # Get monitor list
     call_get(url_monitor, True)
-
-    # Time-test API for monitors
-    call_time(url_monitor)
 
     # Delete added service
     delete_service(url_givenservice)

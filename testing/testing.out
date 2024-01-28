@@ -1,0 +1,67 @@
+
+#################
+http://104.154.246.19:8000/service/ POST
+200
+{'serviceId': '86e0a656-bc46-4cd0-8b66-84c6d02cae9f'}
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/ PUT
+200
+{'result': 'OK'}
+
+#################
+http://104.154.246.19:8000/service/ GET
+200
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/ GET
+200
+[{'alertingWindow': 10000,
+  'allowedResponseTime': 120000,
+  'frequency': 5000,
+  'serviceId': '86e0a656-bc46-4cd0-8b66-84c6d02cae9f',
+  'url': 'https://martinez-alert.com/'}]
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/contact_methods/ PUT
+200
+None
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/contact_methods/ GET
+200
+[{'email': 'user@example.com'}, {'email': 'adm1n@gmail.com'}]
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/alerts/ GET
+200
+
+#################
+http://104.154.246.19:8000/ack/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/1706473327 POST
+200
+{'result': []}
+
+#################
+Function call_time ran 100 times and took 34.0486 seconds, 0.3405 per call
+
+#################
+Function call_time ran 100 times and took 36.2180 seconds, 0.3622 per call
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/alerts/ GET
+200
+[{'alertId': 'e2106608-0d6e-4544-bc48-742691ef0aa7',
+  'detectionTimestamp': '2024-01-28T20:22:30.732183Z',
+  'serviceId': '86e0a656-bc46-4cd0-8b66-84c6d02cae9f',
+  'status': 0}]
+
+#################
+http://104.154.246.19:8000/monitors/ GET
+200
+[{'leasedTo': '2024-01-28T20:24:21.120000Z',
+  'monitorId': 'e17a41aa-df28-491e-9fd2-6d6db04b9636'}]
+
+#################
+http://104.154.246.19:8000/service/86e0a656-bc46-4cd0-8b66-84c6d02cae9f/ DEL
+200
+{'result': 'OK'}
