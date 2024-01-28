@@ -25,7 +25,7 @@ class WorkPoller(abc.ABC):
     async def renew_lease(
         self,
         services: list[ServiceId],
-    ) -> None:
+    ) -> list[ServiceId]:
         pass
 
     @abc.abstractmethod

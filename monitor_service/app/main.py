@@ -98,10 +98,14 @@ def main():
     if settings.run_worker:
         p = multiprocessing.Process(target=run_worker, args=(settings,))
         p.start()
+    else:
+        p = None
     if settings.run_server:
         config = uvicorn.Config("api.main:app", port=8000, log_level="info")
         server = uvicorn.Server(config)
         server.run()
+    if p is not None:
+        p.join()
 
 
 if __name__ == "__main__":

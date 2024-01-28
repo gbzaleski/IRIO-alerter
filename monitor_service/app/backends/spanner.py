@@ -115,9 +115,9 @@ class WorkPollerSpanner(WorkPoller):
     async def renew_lease(
         self,
         services: list[ServiceId],
-    ) -> None:
+    ) -> list[ServiceId]:
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
+        return await loop.run_in_executor(
             None,
             partial(
                 _renew_lease,
@@ -154,7 +154,7 @@ def _poll_for_work(
     already_monitored_services: list[ServiceId],
     config: WorkPollerConfiguration,
 ) -> list[ServiceId]:
-    s = set(already_monitored_services)
+    already_monitored_services_s = set(already_monitored_services)
 
     def f(transaction: Transaction):
         new_services = [
@@ -210,7 +210,7 @@ def _poll_for_work(
         return new_services
 
     res = database.run_in_transaction(f)
-    return [x for x in res if x not in s]
+    return [x for x in res if x not in already_monitored_services_s]
 
 
 RENEW_LEASE_SQL = """
@@ -224,9 +224,9 @@ THEN RETURN (ServiceId)
 
 def _renew_lease(
     database: Database, services: list[ServiceId], config: WorkPollerConfiguration
-):
+) -> list[ServiceId]:
     if len(services) == 0:
-        return
+        return []
 
     def f(transaction: Transaction):
         transaction.begin()
@@ -243,10 +243,10 @@ def _renew_lease(
                 "ServicesIds": param_types.Array(param_types.STRING),
             },
         )
-        return list(res)
+        return [r[0] for r in res]
 
     try:
-        r = database.run_in_transaction(f)
+        return database.run_in_transaction(f)
     except:
         logger.exception("Error while renewing lease on monitored services")
 

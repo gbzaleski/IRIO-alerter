@@ -1,4 +1,5 @@
 import asyncio
+import signal
 from pydantic import BaseModel
 import structlog
 
@@ -29,6 +30,10 @@ class WorkManager:
         self._alerter = alerter
         self._monitored_services: dict[ServiceId, ServiceMonitor] = {}
         self._background_tasks = set()
+        self._monitoring_tasks = {}
+        self.running = True
+        signal.signal(signal.SIGINT, self._shutdown_gracefully)
+        signal.signal(signal.SIGTERM, self._shutdown_gracefully)
 
     async def start(self):
         # polling_task = asyncio.create_task(self._poll_for_work())
@@ -40,7 +45,7 @@ class WorkManager:
         await self._poll_for_work()
 
     async def _poll_for_work(self):
-        while True:
+        while self.running:
             logger.info("Polling for work")
             new_services_limit = self.config.max_monitored_services - len(
                 self._monitored_services
@@ -57,7 +62,13 @@ class WorkManager:
         lease_renew_interval = self._work_poller.config.lease_duration / 3000
         while True:
             logger.info("Renewing lease on monitored services")
-            await self._work_poller.renew_lease(list(self._monitored_services.keys()))
+            renewed_leases = await self._work_poller.renew_lease(
+                list(self._monitored_services.keys())
+            )
+            for not_renewed in set(self._monitored_services.keys()) - set(
+                renewed_leases
+            ):
+                self._stop_monitoring(not_renewed)
             await asyncio.sleep(lease_renew_interval)
 
     async def _start_monitoring(self, serviceId: ServiceId):
@@ -74,5 +85,24 @@ class WorkManager:
             )
             self._monitored_services[serviceId] = monitor
             monitoring_task = asyncio.create_task(monitor.monitor())
-            self._background_tasks.add(monitoring_task)
-            monitoring_task.add_done_callback(self._background_tasks.discard)
+            self._monitoring_tasks[serviceId] = monitoring_task
+            monitoring_task.add_done_callback(
+                lambda _: self._stop_monitoring(serviceId)
+            )
+
+    def _stop_monitoring(self, serviceId: ServiceId):
+        logger.info("Stop monitoring of service", serviceId=serviceId)
+        task = self._monitoring_tasks.pop(serviceId, None)
+        if task is not None:
+            task.cancel()
+
+        self._monitored_services.pop(serviceId, None)
+
+    def _shutdown_gracefully(self, signum, frame):
+        logger.info("Received shutdown signal %d", signum)
+        self.running = False
+        for task in self._background_tasks:  # FIXME: not safe for threading
+            task.cancel()
+
+        for serviceId in list(self._monitored_services.keys()):
+            self._stop_monitoring(serviceId)
