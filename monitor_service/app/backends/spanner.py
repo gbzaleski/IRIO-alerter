@@ -72,6 +72,7 @@ def _send_alert(database: Database, alert: Alert, config: AlerterConfiguration):
                     serviceId=alert.serviceId,
                     elapsed=millis,
                 )
+                return
 
         transaction.insert(
             "Alerts",
