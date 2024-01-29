@@ -56,7 +56,7 @@ def get_settings() -> Settings:
             alerter_id=alerter_id,
             run_server=False,
             run_worker=True,
-            use_real_sender=False,
+            use_real_sender=True,
             poller_config=AlertPollerConfiguration(
                 alerter_id=alerter_id,
                 covered_shards=list(range(64)),
