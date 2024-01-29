@@ -5,7 +5,7 @@ from httpx import TimeoutException, RequestError
 from pydantic import BaseModel
 import structlog
 
-from .types import MonitorId, MonitoredServiceInfo
+from .types import MonitorId, MonitoredServiceInfo, Miliseconds
 from .alerter import Alert, Alerter
 from .utils import get_time, time_difference_in_ms
 
@@ -14,6 +14,7 @@ logger = structlog.stdlib.get_logger()
 
 class ServiceMonitorConfiguration(BaseModel):
     monitor_id: MonitorId
+    timeout: Miliseconds
 
 
 class ServiceMonitor:
@@ -49,18 +50,29 @@ class ServiceMonitor:
 
         Should finish in time < monitoring frequency #TODO: add metric
         """
-        timeout = self.info.frequency / 2000  # TODO: set sensible timeout
+        timeout_s = min(self.info.frequency / 2000, self.config.timeout / 1000)
         url = str(self.info.url)
         async with httpx.AsyncClient() as client:
+            errored = False
             try:
-                r = await client.get(url, timeout=timeout)
+                r = await client.get(url, timeout=timeout_s)
                 self.last_response_time = get_time()
+                if r.status_code != 200:
+                    logger.warning(
+                        f"Service {self.info.serviceId} responded with status code {r.status_code}",
+                        serviceId=self.info.serviceId,
+                        status_code=r.status_code,
+                    )
+                    errored = True
             except RequestError as e:
-                logger.info(
+                logger.warning(
                     f"Service {self.info.serviceId} did not respond correctly within allowed time",
                     serviceId=self.info.serviceId,
                     exception_type=type(e).__name__,
                 )
+                errored = True
+
+            if errored:
                 should_send = self._should_send_alert()
                 if should_send:
                     await self._send_alert()

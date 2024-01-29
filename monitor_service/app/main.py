@@ -52,6 +52,7 @@ def get_settings() -> Settings:
                 monitor_id=monitor_id,
                 max_monitored_services=100,
                 work_poll_interval=20,
+                monitored_service_timeout=4000,
             ),
             alerter_config=AlerterConfiguration(
                 alert_cooldown=120000,
@@ -71,6 +72,7 @@ def get_settings() -> Settings:
                 monitor_id=monitor_id,
                 max_monitored_services=100,
                 work_poll_interval=60,
+                monitored_service_timeout=4000,
             ),
             alerter_config=AlerterConfiguration(
                 alert_cooldown=120000,

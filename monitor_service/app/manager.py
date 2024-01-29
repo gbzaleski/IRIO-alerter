@@ -6,7 +6,7 @@ import structlog
 from .poller import WorkPoller
 from .alerter import Alerter
 from .monitor import ServiceMonitor, ServiceMonitorConfiguration
-from .types import ServiceId, MonitorId
+from .types import ServiceId, MonitorId, Miliseconds
 
 logger = structlog.stdlib.get_logger()
 
@@ -15,6 +15,7 @@ class WorkManagerConfiguration(BaseModel):
     monitor_id: MonitorId
     max_monitored_services: int = 10  # TODO:
     work_poll_interval: float = 10.0
+    monitored_service_timeout: Miliseconds
 
 
 class WorkManager:
@@ -79,7 +80,10 @@ class WorkManager:
         else:
             info = info_l[0]
             monitor = ServiceMonitor(
-                config=ServiceMonitorConfiguration(monitor_id=self.config.monitor_id),
+                config=ServiceMonitorConfiguration(
+                    monitor_id=self.config.monitor_id,
+                    timeout=self.config.monitored_service_timeout,
+                ),
                 info=info,
                 alerter=self._alerter,
             )
