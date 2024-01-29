@@ -2,6 +2,7 @@ import asyncio
 import signal
 from pydantic import BaseModel
 import structlog
+from structlog.contextvars import bind_contextvars
 
 from .poller import WorkPoller
 from .alerter import Alerter
@@ -24,7 +25,7 @@ class WorkManager:
         config: WorkManagerConfiguration,
         *,
         work_poller: WorkPoller,
-        alerter: Alerter
+        alerter: Alerter,
     ):
         self.config = config
         self._work_poller = work_poller
@@ -40,6 +41,7 @@ class WorkManager:
         # polling_task = asyncio.create_task(self._poll_for_work())
         # self._background_tasks.add(polling_task)
         # polling_task.add_done_callback(self._background_tasks.discard)
+        bind_contextvars(monitorId=self.config.monitor_id)
         lease_renew_task = asyncio.create_task(self._renew_lease())
         self._background_tasks.add(lease_renew_task)
         lease_renew_task.add_done_callback(self._background_tasks.discard)
@@ -65,6 +67,10 @@ class WorkManager:
             logger.info("Renewing lease on monitored services")
             renewed_leases = await self._work_poller.renew_lease(
                 list(self._monitored_services.keys())
+            )
+            logger.info(
+                f"Renewed lease on {len(renewed_leases)} services",
+                renewed_leases_count=len(renewed_leases),
             )
             for not_renewed in set(self._monitored_services.keys()) - set(
                 renewed_leases

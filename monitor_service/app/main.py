@@ -5,7 +5,7 @@ import uuid
 import multiprocessing
 import uvicorn
 import structlog
-import structlog_gcp
+from structlog.contextvars import merge_contextvars
 from structlog_gcp import processors
 
 from .settings import (
@@ -17,8 +17,9 @@ from .settings import (
 
 
 def build_structlog_processors():
-    procs = []
-
+    procs = [
+        merge_contextvars,
+    ]
     procs.extend(processors.CoreCloudLogging().setup())
     procs.extend(processors.LogSeverity().setup())
     procs.extend(processors.CodeLocation().setup())
@@ -27,7 +28,7 @@ def build_structlog_processors():
     return procs
 
 
-structlog.configure(processors=structlog_gcp.build_processors())
+structlog.configure(processors=build_structlog_processors())
 
 
 def get_settings() -> Settings:
