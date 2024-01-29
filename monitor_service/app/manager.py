@@ -57,6 +57,10 @@ class WorkManager:
                 new_services = await self._work_poller.poll_for_work(
                     new_services_limit, self._monitored_services
                 )
+                logger.info(
+                    f"New services to monitor {len(new_services)}",
+                    new_services_count=len(new_services),
+                )
                 for service in new_services:
                     await self._start_monitoring(service)
             await asyncio.sleep(self.config.work_poll_interval)

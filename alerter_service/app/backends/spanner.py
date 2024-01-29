@@ -204,7 +204,7 @@ def _get_contact_methods_for_alerts(database: Database, alerts: list[Alert]):
                 logger.error(
                     f"No contact method for alert ({alert.alertId}) status {alert.status}",
                     alertId=alert.alertId,
-                    alert_status=other.value,
+                    alert_status=alert.status.value,
                 )
             else:
                 contact_methods[alert.alertId] = ContactMethod(email=method)

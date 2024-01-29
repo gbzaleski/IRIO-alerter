@@ -36,7 +36,9 @@ THEN RETURN ServiceId
 
 
 def ack_service(serviceId: ServiceId, detectionTimestamp: datetime):
-    def f(transaction: Transaction, results):
+    def f(transaction: Transaction):
+        results = []
+        begin_transaction(transaction)
         for x in transaction.execute_sql(
             ACK_SERVICE_SQL,
             params={
@@ -51,10 +53,9 @@ def ack_service(serviceId: ServiceId, detectionTimestamp: datetime):
             },
         ):
             results.append(x)
+        return results
 
-    results = []
-    db.run_in_transaction(f, results)
-    return {"result": results}
+    return {"result": db.run_in_transaction(f)}
 
 
 ACK_ALERT_SQL = """
@@ -66,7 +67,7 @@ WHERE AlertId = @AlertId
 
 def ack_alert(alertId: AlerterId):
     def f(transaction: Transaction):
-        transaction.execute_sql(
+        transaction.execute_update(
             ACK_ALERT_SQL,
             params={"AlertId": alertId, "Ack": AlertStatus.ACK.value},
             param_types={"AlertId": param_types.STRING, "Ack": param_types.INT64},
