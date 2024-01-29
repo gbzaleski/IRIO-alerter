@@ -147,7 +147,6 @@ def _mark_alerts_as_sent(database: Database, alerts: list[Alert]):
                 transaction, [alert.serviceId for alert in alerts]
             )
         }
-        print(service_id_to_allowed_response_time)
         pt = {"AlertId": param_types.STRING, "ExpireTimeMs": param_types.INT64}
         statements = [
             (
@@ -163,7 +162,6 @@ def _mark_alerts_as_sent(database: Database, alerts: list[Alert]):
             for alert in alerts
         ]
         r = transaction.batch_update(statements)
-        print(r)
 
     database.run_in_transaction(f)
 
