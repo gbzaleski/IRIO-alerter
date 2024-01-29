@@ -2,3 +2,6 @@
 -r monitor_service/requirements.txt
 ipython
 rich
+pytest
+pytest-asyncio
+pytest-html
