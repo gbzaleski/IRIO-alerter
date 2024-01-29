@@ -76,6 +76,30 @@ def ack_alert(alertId: AlerterId):
     db.run_in_transaction(f)
 
 
+GET_ALERT_STATUS_SQL = """
+SELECT AlertId, ServiceId, DetectionTimestamp, AlertStatus
+FROM Alerts
+WHERE AlertId = @AlertId
+"""
+
+
+def alert_status(alertId: AlerterId) -> Alert | None:
+    with db.snapshot() as snapshot:
+        results = snapshot.execute_sql(
+            GET_ALERT_STATUS_SQL,
+            params={"AlertId": alertId},
+            param_types={"AlertId": param_types.STRING},
+        )
+        x = results.one_or_none()
+        if x is not None:
+            return Alert(
+                alertId=x[0],
+                serviceId=x[1],
+                detectionTimestamp=x[2],
+                status=AlertStatus(x[3]),
+            )
+
+
 INSERT_SERVICE_SQL = """
 INSERT INTO MonitoredServices (WorkspaceId, Url, Frequency, AlertingWindow, AllowedResponseTime)
 VALUES (@WorkspaceId, @Url, @Frequency, @AlertingWindow, @AllowedResponseTime)
@@ -282,6 +306,30 @@ def get_monitored_by(monitor_id: MonitorId) -> list[MonitoredServicesLease]:
                 "MonitorId": monitor_id,
             },
             param_types={"MonitorId": param_types.STRING},
+        )
+        return [
+            MonitoredServicesLease(
+                serviceId=x[0], monitorId=x[1], leasedAt=x[2], leasedTo=x[3]
+            )
+            for x in results
+        ]
+
+
+GET_SERVICE_MONITORS_SQL = """
+SELECT ServiceId, MonitorId, LeasedAt, LeasedTo
+FROM MonitoredServicesLease
+WHERE ServiceId = @ServiceId AND LeasedTo > CURRENT_TIMESTAMP()
+"""
+
+
+def get_service_monitors(service_id: ServiceId) -> list[MonitoredServicesLease]:
+    with db.snapshot() as snapshot:
+        results = snapshot.execute_sql(
+            GET_SERVICE_MONITORS_SQL,
+            params={
+                "ServiceId": service_id,
+            },
+            param_types={"ServiceId": param_types.STRING},
         )
         return [
             MonitoredServicesLease(

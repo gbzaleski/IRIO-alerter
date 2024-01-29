@@ -52,6 +52,11 @@ def service_get(serviceId: Annotated[ServiceId, Path(max_length=36)]):
     return queries.get_service(serviceId)
 
 
+@app.get("/service/{serviceId}/monitors/", response_model=list[MonitoredServicesLease])
+def service_monitors(serviceId: Annotated[ServiceId, Path(max_length=36)]):
+    return queries.get_service_monitors(serviceId)
+
+
 @app.get("/service/{serviceId}/contact_methods/", response_model=list[ContactMethod])
 def service_contact_methods(serviceId: Annotated[ServiceId, Path(max_length=36)]):
     return queries.get_service_contact_methods(serviceId)
@@ -83,6 +88,11 @@ def active_monitors():
 @app.post("/alerts/{alertId}/ack/")
 def alert_ack(alertId: AlerterId):
     return queries.ack_alert(alertId)
+
+
+@app.get("/alerts/{alertId}/", response_model=Alert | None)
+def alert_status(alertId: AlerterId):
+    return queries.alert_status(alertId)
 
 
 @app.get("/service/{serviceId}/alerts/", response_model=list[Alert])
