@@ -46,4 +46,12 @@ CREATE TABLE Alerts (
 
 CREATE NULL_FILTERED INDEX AlertsById ON Alerts(AlertId);
 
-CREATE NULL_FILTERED INDEX AlertsByStatus ON Alerts(AlertStatus, AlertId)
+CREATE NULL_FILTERED INDEX AlertsByStatus ON Alerts(AlertStatus, AlertId);
+
+CREATE Table AlertLog (
+    AlertId STRING(36) NOT NULL,
+    ActionTimestamp TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+    Actor STRING(36) NOT NULL,
+    ActorType INT64 NOT NULL,
+    Action INT64 NOT NULL
+) PRIMARY KEY (AlertId, ActionTimestamp DESC)

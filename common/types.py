@@ -16,3 +16,9 @@ class AlertStatus(Enum):
     NOTIFY1 = 1
     NOTIFY2 = 2
     ACK = 200
+
+
+class ActorType(Enum):
+    MONITOR = 0
+    ALERTER = 1
+    USER = 2

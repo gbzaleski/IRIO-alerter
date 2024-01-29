@@ -13,7 +13,7 @@ from ..types import (
     MonitoredServiceInfo,
     ServiceId,
 )
-from ..common.types import AlertStatus
+from ..common.types import AlertStatus, ActorType
 from ..alerter import Alert, Alerter, AlerterConfiguration
 from ..poller import WorkPoller, WorkPollerConfiguration
 
@@ -48,6 +48,11 @@ def _get_timestamp(database: Database):
         return results.one()[0]
 
 
+def _begin_transaction(transaction: Transaction):
+    if transaction._transaction_id is None:
+        transaction.begin()
+
+
 LAST_SUBMITTED_ALERT_SQL = """
 SELECT DetectionTimestamp, AlertStatus FROM Alerts
 WHERE ServiceId = @ServiceId
@@ -55,9 +60,21 @@ ORDER BY DetectionTimestamp DESC
 LIMIT 1
 """
 
+SEND_ALERT_SQL = """
+INSERT INTO Alerts (ServiceId, MonitorId, DetectionTimestamp, AlertStatus)
+VALUES (@ServiceId, @MonitorId, @DetectionTimestamp, @AlertStatus)
+THEN RETURN AlertId
+"""
+
+INSERT_TO_ALERT_LOG_SQL = """
+INSERT INTO AlertLog (AlertId, Actor, ActorType, Action, ActionTimestamp)
+VALUES (@AlertId, @Actor, @ActorType, @Action, PENDING_COMMIT_TIMESTAMP())
+"""
+
 
 def _send_alert(database: Database, alert: Alert, config: AlerterConfiguration):
     def f(transaction: Transaction):
+        _begin_transaction(transaction)
         last_alert = transaction.execute_sql(
             LAST_SUBMITTED_ALERT_SQL,
             params={"ServiceId": alert.serviceId},
@@ -74,17 +91,36 @@ def _send_alert(database: Database, alert: Alert, config: AlerterConfiguration):
                 )
                 return
 
-        transaction.insert(
-            "Alerts",
-            columns=["ServiceId", "MonitorId", "DetectionTimestamp", "AlertStatus"],
-            values=[
-                [
-                    alert.serviceId,
-                    alert.monitorId,
-                    alert.timestamp,
-                    AlertStatus.SUBMITTED.value,
-                ]
-            ],
+        r = transaction.execute_sql(
+            SEND_ALERT_SQL,
+            params={
+                "ServiceId": alert.serviceId,
+                "MonitorId": alert.monitorId,
+                "DetectionTimestamp": alert.timestamp,
+                "AlertStatus": AlertStatus.SUBMITTED.value,
+            },
+            param_types={
+                "ServiceId": param_types.STRING,
+                "MonitorId": param_types.STRING,
+                "DetectionTimestamp": param_types.TIMESTAMP,
+                "AlertStatus": param_types.INT64,
+            },
+        ).one()
+        alertId = r[0]
+        transaction.execute_update(
+            INSERT_TO_ALERT_LOG_SQL,
+            params={
+                "AlertId": alertId,
+                "Actor": alert.monitorId,
+                "ActorType": ActorType.MONITOR.value,
+                "Action": AlertStatus.SUBMITTED.value,
+            },
+            param_types={
+                "AlertId": param_types.STRING,
+                "Actor": param_types.STRING,
+                "ActorType": param_types.INT64,
+                "Action": param_types.INT64,
+            },
         )
 
     database.run_in_transaction(f)
