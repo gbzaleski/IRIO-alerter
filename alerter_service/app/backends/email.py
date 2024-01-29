@@ -1,11 +1,13 @@
 from collections import namedtuple
 import os
-import logging
+import structlog
 import httpx
 from google.cloud import secretmanager
 
 from ..types import ContactMethod, Alert
 from ..sender import AlertSender
+
+logger = structlog.stdlib.get_logger()
 
 
 def access_secret_version(secret_id):
@@ -42,8 +44,10 @@ class AlertSenderEmail(AlertSender):
             )
             return True
         except httpx.HTTPStatusError:
-            logging.exception(
-                "Error while sending email with alert info for alert %s", alert.alertId
+            logger.exception(
+                "Error while sending email with alert info for alert %s",
+                alert.alertId,
+                alertId=alert.alertId,
             )
             return False
 

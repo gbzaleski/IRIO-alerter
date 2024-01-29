@@ -1,7 +1,10 @@
 import abc
 from pydantic import BaseModel
+import structlog
 
 from .types import Alert, AlerterId, AlertId, ContactMethod
+
+logger = structlog.stdlib.get_logger()
 
 
 class AlertSenderConfiguration(BaseModel):
@@ -39,7 +42,7 @@ class AlertSenderManager:
         config: AlertSenderManagerConfiguration,
         *,
         alert_sender: AlertSender,
-        alert_state_manager: AlertStateManager
+        alert_state_manager: AlertStateManager,
     ):
         self.config = config
         self._alert_sender = alert_sender
@@ -56,4 +59,4 @@ class AlertSenderManager:
                 await self._alert_sender.send_alert(alert, contact_method)
                 await self._alert_state_manager.mark_alerts_as_sent([alert])
                 # TODO: improve efficiency of processing
-                print("Sent alert", alert.alertId)
+                logger.info(f"Sent alert {alert.alertId}", alertId=alert.alertId)

@@ -1,15 +1,17 @@
 import os
-import logging
 import asyncio
 from functools import partial
 from google.cloud import spanner
 from google.cloud.spanner_v1.database import Database
 from google.cloud.spanner_v1.transaction import Transaction
 from google.cloud.spanner_v1 import param_types
+import structlog
 
 from ..types import Alert, AlertId, AlertStatus, ServiceId, ContactMethod
 from ..poller import AlertPoller, AlertPollerConfiguration
 from ..sender import AlertStateManager
+
+logger = structlog.stdlib.get_logger()
 
 
 class AlertPollerSpanner(AlertPoller):
@@ -191,12 +193,18 @@ def _get_contact_methods_for_alerts(database: Database, alerts: list[Alert]):
                 case AlertStatus.NOTIFY1:
                     order = 1
                 case other:
-                    logging.error(f"Invalid alert ({alert.alertId}) status {other}")
+                    logger.error(
+                        f"Invalid alert ({alert.alertId}) status {other}",
+                        alertId=alert.alertId,
+                        alert_status=other.value,
+                    )
 
             method = r.get((alert.serviceId, order))
             if method is None:
-                logging.error(
-                    f"No contact method for alert ({alert.alertId}) status {alert.status}"
+                logger.error(
+                    f"No contact method for alert ({alert.alertId}) status {alert.status}",
+                    alertId=alert.alertId,
+                    alert_status=other.value,
                 )
             else:
                 contact_methods[alert.alertId] = ContactMethod(email=method)
