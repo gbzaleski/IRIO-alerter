@@ -6,12 +6,19 @@ import logging
 from .settings import MAIN_URL
 from .types import Alert, ServiceId, AlertStatus, AlerterId
 
-TIMEOUT = 2.0
+TIMEOUT = 5.0
 
 
 def clear_environment():
     r = requests.post(f"{MAIN_URL}tests/delete_all/", timeout=TIMEOUT)
     assert r.status_code == 200
+
+
+@pytest.fixture()
+def clear_environment_fixture():
+    clear_environment()
+    yield
+    clear_environment()
 
 
 def insert_service(data) -> ServiceId:
@@ -37,6 +44,7 @@ def sleep(s: float):
 
 
 def monitor_inserts_alert_for_unresponding_service(serviceId: ServiceId):
+    logging.info(f"testing: monitor_inserts_alert_for_unresponding_service {serviceId}")
     assert (len(get_service_alerts(serviceId))) == 0
     alert_found = None
 
@@ -54,6 +62,7 @@ def monitor_inserts_alert_for_unresponding_service(serviceId: ServiceId):
 
 
 def alerter_sends_alert_to_first_admin(serviceId: ServiceId):
+    logging.info(f"testing: alerter_sends_alert_to_first_admin {serviceId}")
     first_admin_notified = None
     for i in range(8):
         alerts = get_service_alerts(serviceId)
@@ -88,10 +97,9 @@ def alert_is_ack_after_ack_by_admin(serviceId: ServiceId):
     ensure_alert_status(alert.alertId, serviceId, AlertStatus.ACK)
 
 
-def test_monitor_alerter_admin_workflow(caplog):
+def test_monitor_alerter_admin_workflow(caplog, clear_environment_fixture):
     caplog.set_level(logging.INFO)
 
-    clear_environment()
     # Mock alert data
     data = {
         "url": "https://martinez-alert.com/",
@@ -110,7 +118,9 @@ def test_monitor_alerter_admin_workflow(caplog):
     alert_is_ack_after_ack_by_admin(serviceId)
 
 
-def test_monitor_does_not_insert_alert_for_properly_working_service(caplog):
+def test_monitor_does_not_insert_alert_for_properly_working_service(
+    caplog, clear_environment_fixture
+):
     caplog.set_level(logging.INFO)
     clear_environment()
     # Mock alert data
